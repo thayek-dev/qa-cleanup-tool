@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q&A Knowledge Base Cleanup Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6366f1 0%, #14b8a6 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+        }
+
+        .controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .search-container {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+        }
+
+        .select {
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #4f46e5;
+        }
+
+        .btn-secondary {
+            background: #14b8a6;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #0f766e;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+        }
+
+        .qa-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .qa-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .qa-item:hover {
+            background: #f8fafc;
+        }
+
+        .qa-item.selected {
+            background: #ede9fe;
+            border-left: 4px solid #6366f1;
+        }
+
+        .qa-question {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .qa-answer {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .qa-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .duplicate-badge {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .issue-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .issue-duplicate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .issue-vague {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .panel-content {
+            padding: 1.5rem;
+        }
+
+        .detail-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .detail-content {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            line-height: 1.6;
+        }
+
+        .textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .duplicates-section {
+            background: #fffbeb;
+            border: 1px solid #fed7aa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .duplicates-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 0.5rem;
+        }
+
+        .duplicate-item {
+            background: white;
+            border: 1px solid #fed7aa;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .similarity-score {
+            background: #f59e0b;
+            color: white;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            float: right;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .spinner {
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-container {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Icons
+        const SearchIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="21 21l-4.35-4.35"></path>
+            </svg>
+        );
+
+        const UploadIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        );
+
+        const DownloadIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        );
+
+        const EditIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="12 20h9"></path>
+                <path d="16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+        );
+
+        const CheckIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22,4 12,14.01 9,11.01"></polyline>
+            </svg>
+        );
+
+        const TrashIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,6 5,6 21,6"></polyline>
+                <path d="19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        );
+
+        const QACleanupTool = () => {
+            const [allPairs, setAllPairs] = useState([]);
+            const [finalizedPairs, setFinalizedPairs] = useState([]);
+            const [deletedPairs, setDeletedPairs] = useState([]);
+            const [filteredPairs, setFilteredPairs] = useState([]);
+            const [selectedPair, setSelectedPair] = useState(null);
+            const [duplicatesForSelected, setDuplicatesForSelected] = useState([]);
+            const [currentTab, setCurrentTab] = useState('review');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filter, setFilter] = useState('all');
+            const [editingPair, setEditingPair] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+
+            useEffect(() => {
+                loadSampleData();
+            }, []);
+
+            useEffect(() => {
+                let pairs = [];
+                switch(currentTab) {
+                    case 'review':
+                        pairs = allPairs;
+                        break;
+                    case 'finalized':
+                        pairs = finalizedPairs;
+                        break;
+                    case 'deleted':
+                        pairs = deletedPairs;
+                        break;
+                }
+
+                let filtered = pairs;
+
+                if (searchTerm) {
+                    filtered = filtered.filter(pair => 
+                        pair.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        pair.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        pair.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+                    );
+                }
+
+                if (filter === 'duplicates') {
+                    filtered = filtered.filter(pair => pair.hasDuplicates);
+                }
+
+                setFilteredPairs(filtered);
+            }, [allPairs, finalizedPairs, deletedPairs, currentTab, searchTerm, filter]);
+
+            useEffect(() => {
+                if (selectedPair && selectedPair.hasDuplicates) {
+                    const allData = [...allPairs, ...finalizedPairs, ...deletedPairs];
+                    const duplicates = findDuplicatesForPair(selectedPair, allData);
+                    setDuplicatesForSelected(duplicates);
+                } else {
+                    setDuplicatesForSelected([]);
+                }
+            }, [selectedPair, allPairs, finalizedPairs, deletedPairs]);
+
+            const calculateSimilarity = (text1, text2) => {
+                const words1 = text1.toLowerCase().split(/\s+/);
+                const words2 = text2.toLowerCase().split(/\s+/);
+                
+                const set1 = new Set(words1);
+                const set2 = new Set(words2);
+                
+                const intersection = new Set([...set1].filter(x => set2.has(x)));
+                const union = new Set([...set1, ...set2]);
+                
+                return intersection.size / union.size;
+            };
+
+            const findDuplicatesForPair = (targetPair, allPairs) => {
+                return allPairs
+                    .filter(pair => pair.id !== targetPair.id)
+                    .map(pair => ({
+                        ...pair,
+                        similarity: Math.round(calculateSimilarity(targetPair.question, pair.question) * 100)
+                    }))
+                    .filter(pair => pair.similarity > 60)
+                    .sort((a, b) => b.similarity - a.similarity);
+            };
+
+            const inferTags = (text) => {
+                const lowercaseText = text.toLowerCase();
+                const tagMap = {
+                    security: ['encrypt', 'security', 'auth', 'password', 'secure'],
+                    compliance: ['compliance', 'audit', 'cert', 'gdpr', 'hipaa', 'sox'],
+                    privacy: ['privacy', 'personal', 'pii', 'data protection'],
+                    infrastructure: ['server', 'cloud', 'backup', 'system', 'network'],
+                    support: ['support', 'help', 'ticket', 'response'],
+                    legal: ['legal', 'contract', 'agreement', 'terms']
+                };
+
+                const tags = [];
+                Object.entries(tagMap).forEach(([tag, keywords]) => {
+                    if (keywords.some(keyword => lowercaseText.includes(keyword))) {
+                        tags.push(tag);
+                    }
+                });
+
+                return tags.length > 0 ? tags : ['general'];
+            };
+
+            const markDuplicates = (data) => {
+                return data.map(pair => ({
+                    ...pair,
+                    hasDuplicates: data.some(other => {
+                        if (other.id === pair.id) return false;
+                        return calculateSimilarity(pair.question, other.question) > 0.6;
+                    })
+                }));
+            };
+
+            const loadSampleData = () => {
+                const questions = [
+                    { q: "What encryption do we use for data at rest?", category: "security" },
+                    { q: "How is our data encrypted when stored?", category: "security" },
+                    { q: "What type of encryption protects our stored data?", category: "security" },
+                    { q: "Do we have SOC 2 certification?", category: "compliance" },
+                    { q: "Are we SOC 2 compliant?", category: "compliance" },
+                    { q: "How long do we retain customer data?", category: "privacy" },
+                    { q: "What is our data retention policy?", category: "privacy" },
+                    { q: "How do we handle support tickets?", category: "support" },
+                    { q: "What is our incident response process?", category: "legal" },
+                    { q: "How do we backup our systems?", category: "infrastructure" }
+                ];
+
+                const answers = {
+                    security: "We use AES-256 encryption for all data at rest and TLS 1.3 for data in transit.",
+                    compliance: "Yes, we maintain SOC 2 Type II certification with annual audits.",
+                    privacy: "Customer data is retained for 7 years or as required by applicable regulations.",
+                    support: "Support tickets are handled through our tiered system with defined SLAs.",
+                    legal: "We have a comprehensive incident response plan that includes notification procedures.",
+                    infrastructure: "We perform automated daily backups with 30-day retention and quarterly disaster recovery tests."
+                };
+
+                const data = questions.map((item, index) => ({
+                    id: index + 1,
+                    question: item.q,
+                    answer: answers[item.category],
+                    tags: [item.category],
+                    hasDuplicates: false
+                }));
+
+                const markedData = markDuplicates(data);
+                setAllPairs(markedData);
+                setFinalizedPairs([]);
+                setDeletedPairs([]);
+                setSelectedPair(null);
+                setCurrentTab('review');
+            };
+
+            const handleFileUpload = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                setIsLoading(true);
+                try {
+                    const data = await readExcelFile(file);
+                    const processedData = processQAData(data);
+                    setAllPairs(processedData);
+                    setFinalizedPairs([]);
+                    setDeletedPairs([]);
+                    setSelectedPair(null);
+                    setCurrentTab('review');
+                } catch (error) {
+                    alert('Error reading file: ' + error.message);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const readExcelFile = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            resolve(jsonData);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            };
+
+            const processQAData = (rawData) => {
+                if (rawData.length < 2) {
+                    throw new Error('File must contain headers and data');
+                }
+
+                const headers = rawData[0].map(h => h?.toString().toLowerCase().trim());
+                const questionCol = headers.findIndex(h => h.includes('question'));
+                const answerCol = headers.findIndex(h => h.includes('answer'));
+
+                if (questionCol === -1 || answerCol === -1) {
+                    throw new Error('Could not find Question and Answer columns');
+                }
+
+                const processedData = rawData.slice(1)
+                    .filter(row => row[questionCol] && row[answerCol])
+                    .map((row, index) => ({
+                        id: index + 1,
+                        question: row[questionCol]?.toString().trim(),
+                        answer: row[answerCol]?.toString().trim(),
+                        tags: inferTags(row[questionCol]?.toString() + ' ' + row[answerCol]?.toString()),
+                        hasDuplicates: false
+                    }));
+
+                return markDuplicates(processedData);
+            };
+
+            const handleFinalize = (pair) => {
+                setAllPairs(prev => prev.filter(p => p.id !== pair.id));
+                setFinalizedPairs(prev => [...prev, pair]);
+                if (selectedPair?.id === pair.id) setSelectedPair(null);
+            };
+
+            const handleDelete = (pair) => {
+                if (currentTab === 'review') {
+                    setAllPairs(prev => prev.filter(p => p.id !== pair.id));
+                } else if (currentTab === 'finalized') {
+                    setFinalizedPairs(prev => prev.filter(p => p.id !== pair.id));
+                }
+                setDeletedPairs(prev => [...prev, pair]);
+                if (selectedPair?.id === pair.id) setSelectedPair(null);
+            };
+
+            const handleRestore = (pair) => {
+                setDeletedPairs(prev => prev.filter(p => p.id !== pair.id));
+                setAllPairs(prev => [...prev, pair]);
+                if (selectedPair?.id === pair.id) setSelectedPair(null);
+            };
+
+            const handlePermanentDelete = (pair) => {
+                setDeletedPairs(prev => prev.filter(p => p.id !== pair.id));
+                if (selectedPair?.id === pair.id) setSelectedPair(null);
+            };
+
+            const handleEdit = (pair) => {
+                setEditingPair({...pair});
+            };
+
+            const handleSave = () => {
+                const updatePair = (pairs) => pairs.map(p => p.id === editingPair.id ? editingPair : p);
+                
+                if (currentTab === 'review') {
+                    setAllPairs(updatePair);
+                } else if (currentTab === 'finalized') {
+                    setFinalizedPairs(updatePair);
+                } else if (currentTab === 'deleted') {
+                    setDeletedPairs(updatePair);
+                }
+                
+                if (selectedPair?.id === editingPair.id) {
+                    setSelectedPair(editingPair);
+                }
+                setEditingPair(null);
+            };
+
+            const exportData = () => {
+                const dataToExport = finalizedPairs.map(pair => ({
+                    Question: pair.question,
+                    Answer: pair.answer,
+                    Tags: pair.tags.join(', ')
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Cleaned QA Pairs');
+                XLSX.writeFile(wb, 'cleaned_qa_pairs.xlsx');
+            };
+
+            const totalDuplicates = allPairs.filter(p => p.hasDuplicates).length;
+
+            return (
+                <div>
+                    <div className="header">
+                        <div className="container">
+                            <h1>Q&A Cleanup Tool</h1>
+                            <p>Clean up and organize your Q&A pairs with AI-powered duplicate detection</p>
+                        </div>
+                    </div>
+
+                    <div className="container">
+                        <div className="tabs">
+                            <button 
+                                className={`tab ${currentTab === 'review' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('review')}
+                            >
+                                Review ({allPairs.length})
+                            </button>
+                            <button 
+                                className={`tab ${currentTab === 'finalized' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('finalized')}
+                            >
+                                Finalized ({finalizedPairs.length})
+                            </button>
+                            <button 
+                                className={`tab ${currentTab === 'deleted' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('deleted')}
+                            >
+                                Deleted ({deletedPairs.length})
+                            </button>
+                        </div>
+
+                        <div className="controls">
+                            <div className="search-container">
+                                <div className="search-icon">
+                                    <SearchIcon />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search questions, answers, or tags..."
+                                    className="search-input"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            
+                            <select 
+                                className="select"
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                            >
+                                <option value="all">All Pairs</option>
+                                <option value="duplicates">Duplicates Only</option>
+                            </select>
+
+                            <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+                                <input
+                                    type="file"
+                                    id="file-upload"
+                                    className="file-input"
+                                    accept=".xlsx,.xls,.csv"
+                                    onChange={handleFileUpload}
+                                />
+                                <label htmlFor="file-upload" className="btn btn-primary">
+                                    {isLoading ? <div className="spinner"></div> : <UploadIcon />} Upload Excel
+                                </label>
+
+                                <button 
+                                    className="btn btn-secondary"
+                                    onClick={exportData}
+                                    disabled={finalizedPairs.length === 0}
+                                >
+                                    <DownloadIcon /> Export ({finalizedPairs.length})
+                                </button>
+
+                                <button className="btn btn-outline" onClick={loadSampleData}>
+                                    🔄 Sample Data
+                                </button>
+                            </div>
+                        </div>
+
+                        {allPairs.length > 0 && (
+                            <div className="stats">
+                                <div className="stat-card">
+                                    <div className="stat-number">{allPairs.length}</div>
+                                    <div className="stat-label">Total Q&A Pairs</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-number" style={{color: '#f59e0b'}}>{totalDuplicates}</div>
+                                    <div className="stat-label">Potential Duplicates</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {allPairs.length === 0 ? (
+                            <div className="empty-state">
+                                <h3>No Data Loaded</h3>
+                                <p>Upload an Excel file or load sample data to get started</p>
+                            </div>
+                        ) : (
+                            <div className="main-content">
+                                <div className="panel">
+                                    <div className="panel-header">
+                                        Q&A Pairs ({filteredPairs.length})
+                                    </div>
+                                    <div className="qa-list">
+                                        {filteredPairs.length === 0 ? (
+                                            <div className="empty-state">
+                                                <p>No pairs match your filter</p>
+                                            </div>
+                                        ) : (
+                                            filteredPairs.map(pair => (
+                                                <div
+                                                    key={pair.id}
+                                                    className={`qa-item ${selectedPair?.id === pair.id ? 'selected' : ''}`}
+                                                    onClick={() => setSelectedPair(pair)}
+                                                >
+                                                    <div className="qa-question">{pair.question}</div>
+                                                    <div className="qa-answer">{pair.answer}</div>
+                                                    <div className="qa-meta">
+                                                        <div className="tags">
+                                                            {pair.tags.map(tag => (
+                                                                <span key={tag} className="tag">{tag}</span>
+                                                            ))}
+                                                            {pair.hasDuplicates && (
+                                                                <span className="duplicate-badge">Duplicate</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="panel">
+                                    <div className="panel-header">
+                                        {selectedPair ? 'Review & Edit' : 'Select a Q&A pair'}
+                                    </div>
+                                    {selectedPair && (
+                                        <div className="panel-content">
+                                            {editingPair?.id === selectedPair.id ? (
+                                                <div>
+                                                    <div className="detail-section">
+                                                        <div className="detail-label">Question</div>
+                                                        <textarea
+                                                            className="textarea"
+                                                            value={editingPair.question}
+                                                            onChange={(e) => setEditingPair({...editingPair, question: e.target.value})}
+                                                            rows="2"
+                                                        />
+                                                    </div>
+                                                    <div className="detail-section">
+                                                        <div className="detail-label">Answer</div>
+                                                        <textarea
+                                                            className="textarea"
+                                                            value={editingPair.answer}
+                                                            onChange={(e) => setEditingPair({...editingPair, answer: e.target.value})}
+                                                            rows="4"
+                                                        />
+                                                    </div>
+                                                    <div className="button-group">
+                                                        <button className="btn btn-secondary" onClick={handleSave}>
+                                                            <CheckIcon /> Save
+                                                        </button>
+                                                        <button className="btn btn-outline" onClick={() => setEditingPair(null)}>
+                                                            ❌ Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div className="detail-section">
+                                                        <div className="detail-label">Question</div>
+                                                        <div className="detail-content">{selectedPair.question}</div>
+                                                    </div>
+                                                    <div className="detail-section">
+                                                        <div className="detail-label">Answer</div>
+                                                        <div className="detail-content">{selectedPair.answer}</div>
+                                                    </div>
+
+                                                    {duplicatesForSelected.length > 0 && (
+                                                        <div className="duplicates-section">
+                                                            <div className="duplicates-title">
+                                                                Found {duplicatesForSelected.length} Potential Duplicates
+                                                            </div>
+                                                            {duplicatesForSelected.slice(0, 3).map((dup, idx) => (
+                                                                <div key={idx} className="duplicate-item">
+                                                                    <div className="similarity-score">{dup.similarity}% match</div>
+                                                                    <div style={{fontWeight: 500, marginBottom: '0.25rem'}}>
+                                                                        {dup.question}
+                                                                    </div>
+                                                                    <div style={{fontSize: '0.85rem', color: '#6b7280'}}>
+                                                                        {dup.answer.substring(0, 100)}
+                                                                        {dup.answer.length > 100 ? '...' : ''}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="button-group">
+                                                        <button className="btn btn-primary" onClick={() => handleEdit(selectedPair)}>
+                                                            <EditIcon /> Edit
+                                                        </button>
+                                                        
+                                                        {currentTab === 'review' && (
+                                                            <>
+                                                                <button className="btn btn-secondary" onClick={() => handleFinalize(selectedPair)}>
+                                                                    <CheckIcon /> Finalize
+                                                                </button>
+                                                                <button className="btn btn-danger" onClick={() => handleDelete(selectedPair)}>
+                                                                    <TrashIcon /> Delete
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        
+                                                        {currentTab === 'finalized' && (
+                                                            <button className="btn btn-danger" onClick={() => handleDelete(selectedPair)}>
+                                                                <TrashIcon /> Delete
+                                                            </button>
+                                                        )}
+                                                        
+                                                        {currentTab === 'deleted' && (
+                                                            <>
+                                                                <button className="btn btn-secondary" onClick={() => handleRestore(selectedPair)}>
+                                                                    ↩️ Restore
+                                                                </button>
+                                                                <button className="btn btn-danger" onClick={() => handlePermanentDelete(selectedPair)}>
+                                                                    ⚠️ Permanent Delete
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(React.createElement(QACleanupTool), document.getElementById('root'));
+    </script>
+</body>
+</html>
