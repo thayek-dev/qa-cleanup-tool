@@ -13,20 +13,12 @@
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: {
-                        'abnormal-blue': '#1e40af',
-                        'abnormal-dark': '#1e293b',
-                        'abnormal-purple': '#7c3aed',
-                        'abnormal-light': '#f8fafc',
-                        'abnormal-accent': '#3b82f6'
-                    }
-                }
+                extend: {}
             }
         }
     </script>
 </head>
-<body class="bg-abnormal-light">
+<body>
     <div id="root"></div>
 
 ```
@@ -81,7 +73,7 @@
     const Trash2 = () => (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3,6 5,6 21,6"></polyline>
-            <path d="19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v4a2 2 0 0 1 2 2v2"></path>
+            <path d="19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             <line x1="10" y1="11" x2="10" y2="17"></line>
             <line x1="14" y1="11" x2="14" y2="17"></line>
         </svg>
@@ -105,26 +97,6 @@
         </svg>
     );
 
-    const Eye = () => (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-    );
-
-    const Star = () => (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"></polygon>
-        </svg>
-    );
-
-    const RotateCcw = () => (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1,4 1,10 7,10"></polyline>
-            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-        </svg>
-    );
-
     const QACleanupTool = () => {
         const [qaPairs, setQaPairs] = useState([]);
         const [filteredPairs, setFilteredPairs] = useState([]);
@@ -135,14 +107,11 @@
         const [isLoading, setIsLoading] = useState(false);
         const [uploadError, setUploadError] = useState(null);
         const [isProcessing, setIsProcessing] = useState(false);
-        const [finalizedPairs, setFinalizedPairs] = useState([]);
-        const [deletedPairs, setDeletedPairs] = useState([]);
-        const [currentView, setCurrentView] = useState('review'); // 'review', 'finalized', 'deleted'
-        const [duplicateGroups, setDuplicateGroups] = useState([]);
 
-        // Initialize with empty data
+        // Initialize with empty data - will be populated by file upload
         useEffect(() => {
             if (qaPairs.length === 0) {
+                // Load sample data for demo purposes
                 loadSampleData();
             }
         }, []);
@@ -151,95 +120,6 @@
             const sampleData = generateSampleData();
             setQaPairs(sampleData);
             setFilteredPairs(sampleData);
-            // Generate duplicate groups
-            const groups = findDuplicateGroups(sampleData);
-            setDuplicateGroups(groups);
-        };
-
-        // Advanced duplicate detection using semantic similarity
-        const findDuplicateGroups = (data) => {
-            const groups = [];
-            const processed = new Set();
-
-            data.forEach((item, index) => {
-                if (processed.has(item.id)) return;
-
-                const similar = data.filter((other, otherIndex) => {
-                    if (otherIndex <= index || processed.has(other.id)) return false;
-                    return calculateAdvancedSimilarity(item.question, other.question) > 0.75;
-                });
-
-                if (similar.length > 0) {
-                    const group = [item, ...similar];
-                    groups.push(group);
-                    group.forEach(pair => processed.add(pair.id));
-                }
-            });
-
-            return groups;
-        };
-
-        // Advanced similarity calculation using multiple techniques
-        const calculateAdvancedSimilarity = (str1, str2) => {
-            // Normalize strings
-            const normalize = (str) => str.toLowerCase().replace(/[^\w\s]/g, '').trim();
-            const norm1 = normalize(str1);
-            const norm2 = normalize(str2);
-
-            // Exact match
-            if (norm1 === norm2) return 1.0;
-
-            // Jaccard similarity (word-based)
-            const words1 = new Set(norm1.split(/\s+/));
-            const words2 = new Set(norm2.split(/\s+/));
-            const intersection = new Set([...words1].filter(x => words2.has(x)));
-            const union = new Set([...words1, ...words2]);
-            const jaccard = intersection.size / union.size;
-
-            // Levenshtein-based similarity
-            const maxLen = Math.max(str1.length, str2.length);
-            const levenshtein = 1 - (levenshteinDistance(norm1, norm2) / maxLen);
-
-            // Semantic keyword matching
-            const keywords1 = extractKeywords(norm1);
-            const keywords2 = extractKeywords(norm2);
-            const keywordSim = calculateKeywordSimilarity(keywords1, keywords2);
-
-            // Weighted combination
-            return (jaccard * 0.4) + (levenshtein * 0.3) + (keywordSim * 0.3);
-        };
-
-        const levenshteinDistance = (str1, str2) => {
-            const matrix = Array(str2.length + 1).fill().map(() => Array(str1.length + 1).fill(0));
-            
-            for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-            for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-            
-            for (let j = 1; j <= str2.length; j++) {
-                for (let i = 1; i <= str1.length; i++) {
-                    const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-                    matrix[j][i] = Math.min(
-                        matrix[j][i - 1] + 1,
-                        matrix[j - 1][i] + 1,
-                        matrix[j - 1][i - 1] + cost
-                    );
-                }
-            }
-            
-            return matrix[str2.length][str1.length];
-        };
-
-        const extractKeywords = (text) => {
-            const stopWords = new Set(['what', 'how', 'do', 'we', 'our', 'the', 'is', 'are', 'for', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'of', 'with', 'by']);
-            return text.split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
-        };
-
-        const calculateKeywordSimilarity = (keywords1, keywords2) => {
-            if (keywords1.length === 0 || keywords2.length === 0) return 0;
-            const set1 = new Set(keywords1);
-            const set2 = new Set(keywords2);
-            const intersection = new Set([...set1].filter(x => set2.has(x)));
-            return intersection.size / Math.max(set1.size, set2.size);
         };
 
         // File upload handler
@@ -256,18 +136,11 @@
                 setQaPairs(processedData);
                 setFilteredPairs(processedData);
                 
-                // Generate duplicate groups
-                const groups = findDuplicateGroups(processedData);
-                setDuplicateGroups(groups);
-                
                 // Reset other states
                 setSelectedPair(null);
                 setEditingPair(null);
                 setSearchTerm('');
                 setFilter('all');
-                setCurrentView('review');
-                setFinalizedPairs([]);
-                setDeletedPairs([]);
                 
             } catch (error) {
                 setUploadError(error.message);
@@ -286,9 +159,11 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         
+                        // Get first worksheet
                         const sheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[sheetName];
                         
+                        // Convert to JSON
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                         resolve(jsonData);
                     } catch (error) {
@@ -301,7 +176,7 @@
             });
         };
 
-        // Process Q&A data
+        // Process Q&A data and detect issues
         const processQAData = async (rawData) => {
             setIsProcessing(true);
             
@@ -315,6 +190,7 @@
                         const headers = rawData[0].map(h => h?.toString().toLowerCase().trim());
                         const rows = rawData.slice(1);
 
+                        // Find question and answer columns
                         const questionCol = findColumn(headers, ['question', 'q', 'query', 'ask']);
                         const answerCol = findColumn(headers, ['answer', 'a', 'response', 'reply']);
 
@@ -323,17 +199,21 @@
                         }
 
                         const processedData = rows
-                            .filter(row => row[questionCol] && row[answerCol])
+                            .filter(row => row[questionCol] && row[answerCol]) // Filter out empty rows
                             .map((row, index) => {
                                 const question = row[questionCol]?.toString().trim();
                                 const answer = row[answerCol]?.toString().trim();
                                 
+                                // Extract tags if available
                                 const tagCol = findColumn(headers, ['tags', 'tag', 'category', 'categories']);
                                 const tags = tagCol !== -1 && row[tagCol] 
                                     ? row[tagCol].toString().split(',').map(t => t.trim()).filter(t => t)
                                     : inferTags(question, answer);
 
+                                // Detect issues
                                 const issues = detectIssues(question, answer);
+                                
+                                // Calculate confidence score
                                 const confidence = calculateConfidence(question, answer, issues);
 
                                 return {
@@ -347,16 +227,20 @@
                                 };
                             });
 
-                        resolve(processedData);
+                        // Run duplicate detection across all data
+                        const dataWithDuplicates = markDuplicates(processedData);
+                        
+                        resolve(dataWithDuplicates);
                     } catch (error) {
                         throw error;
                     } finally {
                         setIsProcessing(false);
                     }
-                }, 1000);
+                }, 1000); // Simulate processing time
             });
         };
 
+        // Helper function to find column index
         const findColumn = (headers, possibleNames) => {
             for (let name of possibleNames) {
                 const index = headers.findIndex(h => h.includes(name));
@@ -365,17 +249,16 @@
             return -1;
         };
 
+        // Infer tags from question and answer content
         const inferTags = (question, answer) => {
             const text = (question + ' ' + answer).toLowerCase();
             const tagMap = {
-                security: ['encrypt', 'security', 'auth', 'password', 'secure', 'firewall', 'malware', 'threat', 'vulnerability', 'breach'],
-                compliance: ['compliance', 'audit', 'cert', 'gdpr', 'hipaa', 'sox', 'iso', 'regulation', 'legal', 'policy'],
-                privacy: ['privacy', 'personal', 'pii', 'data protection', 'consent', 'right to', 'delete', 'export'],
-                infrastructure: ['server', 'cloud', 'backup', 'system', 'network', 'infrastructure', 'uptime', 'monitoring'],
-                support: ['support', 'help', 'ticket', 'response', 'service level', 'sla', 'customer'],
-                legal: ['legal', 'contract', 'agreement', 'terms', 'liability', 'warranty', 'jurisdiction'],
-                finance: ['billing', 'payment', 'cost', 'price', 'invoice', 'refund', 'subscription'],
-                integration: ['api', 'integration', 'connect', 'webhook', 'sync', 'import', 'export']
+                security: ['encrypt', 'security', 'auth', 'password', 'secure', 'firewall', 'malware', 'threat'],
+                compliance: ['compliance', 'audit', 'cert', 'gdpr', 'hipaa', 'sox', 'iso', 'regulation'],
+                privacy: ['privacy', 'personal', 'pii', 'data protection', 'consent', 'right to'],
+                infrastructure: ['server', 'cloud', 'backup', 'system', 'network', 'infrastructure', 'uptime'],
+                support: ['support', 'help', 'ticket', 'response', 'service level', 'sla'],
+                legal: ['legal', 'contract', 'agreement', 'terms', 'liability', 'warranty']
             };
 
             const detectedTags = [];
@@ -388,9 +271,11 @@
             return detectedTags.length > 0 ? detectedTags : ['general'];
         };
 
+        // Detect issues with Q&A pairs
         const detectIssues = (question, answer) => {
             const issues = [];
 
+            // Check for vague answers
             if (answer.length < 50 || 
                 answer.toLowerCase().includes('we follow best practices') ||
                 answer.toLowerCase().includes('industry standard') ||
@@ -398,6 +283,13 @@
                 issues.push('vague');
             }
 
+            // Check for outdated content
+            const oldYears = ['2020', '2021', '2022'];
+            if (oldYears.some(year => answer.includes(year))) {
+                issues.push('outdated');
+            }
+
+            // Check for inconsistent language
             if (answer.includes('TLS 1.2') && answer.includes('TLS 1.3')) {
                 issues.push('inconsistent');
             }
@@ -405,55 +297,77 @@
             return issues;
         };
 
+        // Mark duplicate questions
+        const markDuplicates = (data) => {
+            const duplicateGroups = [];
+            
+            data.forEach((item, index) => {
+                const similar = data.slice(index + 1).filter(other => {
+                    return calculateSimilarity(item.question, other.question) > 0.7;
+                });
+                
+                if (similar.length > 0) {
+                    duplicateGroups.push([item, ...similar]);
+                }
+            });
+
+            // Mark items as duplicates
+            return data.map(item => {
+                const isDuplicate = duplicateGroups.some(group => 
+                    group.some(duplicate => duplicate.id === item.id)
+                );
+                
+                return {
+                    ...item,
+                    issues: isDuplicate && !item.issues.includes('duplicate') 
+                        ? [...item.issues, 'duplicate']
+                        : item.issues
+                };
+            });
+        };
+
+        // Calculate string similarity (simple Jaccard similarity)
+        const calculateSimilarity = (str1, str2) => {
+            const words1 = new Set(str1.toLowerCase().split(/\s+/));
+            const words2 = new Set(str2.toLowerCase().split(/\s+/));
+            
+            const intersection = new Set([...words1].filter(x => words2.has(x)));
+            const union = new Set([...words1, ...words2]);
+            
+            return intersection.size / union.size;
+        };
+
+        // Calculate confidence score
         const calculateConfidence = (question, answer, issues) => {
             let score = 100;
             
+            // Deduct points for issues
             if (issues.includes('vague')) score -= 30;
+            if (issues.includes('outdated')) score -= 25;
             if (issues.includes('inconsistent')) score -= 20;
+            if (issues.includes('duplicate')) score -= 15;
             
+            // Deduct for short answers
             if (answer.length < 30) score -= 20;
+            
+            // Deduct for unclear questions
             if (question.length < 10) score -= 15;
             
             return Math.max(score, 10);
         };
 
+        // Generate realistic sample data
         const generateSampleData = () => {
             const questionTemplates = [
-                { template: "What encryption do we use for {type}?", category: "security", variations: ["data at rest", "data in transit", "databases", "communications", "file storage", "customer data", "internal systems"] },
-                { template: "Do we have {standard} certification?", category: "compliance", variations: ["SOC 2", "ISO 27001", "GDPR", "HIPAA", "PCI DSS", "FedRAMP", "SOX"] },
-                { template: "How long do we retain {data_type}?", category: "privacy", variations: ["customer data", "logs", "backups", "metadata", "audit trails", "user information", "transaction data"] },
-                { template: "How do we handle {event}?", category: "security", variations: ["data breaches", "security incidents", "access violations", "suspicious activity", "malware detection", "phishing attempts"] },
-                { template: "What is our {policy} policy?", category: "compliance", variations: ["data retention", "password", "access control", "backup", "incident response", "privacy", "security"] },
-                { template: "Can customers {action}?", category: "privacy", variations: ["delete their data", "export their data", "opt out", "request copies", "modify data", "access their information"] },
-                { template: "What {technology} do we use?", category: "infrastructure", variations: ["cloud provider", "monitoring tools", "backup solution", "database system", "security tools", "encryption methods"] },
-                { template: "How often do we {action}?", category: "infrastructure", variations: ["backup data", "update systems", "patch servers", "monitor logs", "test DR", "review access"] },
+                { template: "What encryption do we use for {type}?", category: "security", variations: ["data at rest", "data in transit", "databases"] },
+                { template: "Do we have {standard} certification?", category: "compliance", variations: ["SOC 2", "ISO 27001", "GDPR"] },
+                { template: "How long do we retain {data_type}?", category: "privacy", variations: ["customer data", "logs", "backups"] },
             ];
 
             const answers = {
-                security: [
-                    "We use AES-256 encryption for all data at rest and TLS 1.3 for data in transit with perfect forward secrecy.",
-                    "Our security team follows NIST incident response procedures with 24/7 monitoring and automated alerting systems.",
-                    "All access is managed through our identity management system with multi-factor authentication required for all users.",
-                    "We deploy endpoint protection, network security, and email filtering with real-time threat intelligence feeds."
-                ],
-                compliance: [
-                    "Yes, we maintain current certification and undergo annual audits by independent third-party assessors.",
-                    "Our compliance team ensures adherence to all applicable regulations with quarterly internal assessments.",
-                    "We have implemented comprehensive policies that are reviewed annually and updated as regulations change.",
-                    "All staff receive regular training on compliance requirements with documented completion tracking."
-                ],
-                privacy: [
-                    "Customers have full control over their data through our privacy portal with self-service options available 24/7.",
-                    "We only share data as outlined in our privacy policy with explicit consent and under signed agreements.",
-                    "Data is retained according to our published retention policy which complies with all applicable regulations.",
-                    "We provide transparent reporting on all data processing activities through quarterly privacy reports."
-                ],
-                infrastructure: [
-                    "We use enterprise-grade cloud infrastructure with 99.9% uptime SLA across multiple availability zones.",
-                    "Our systems are monitored 24/7 with automated alerting and response capabilities for critical events.",
-                    "We maintain redundant systems across multiple geographic regions with automated failover capabilities.",
-                    "All infrastructure changes follow our change management process with proper testing and rollback procedures."
-                ]
+                security: ["We use AES-256 encryption for all data at rest and TLS 1.3 for data in transit."],
+                compliance: ["Yes, we maintain current certification and undergo annual audits."],
+                privacy: ["Data is retained according to our published retention policy."]
             };
 
             const data = [];
@@ -463,22 +377,16 @@
             for (let round = 0; round < 150; round++) {
                 questionTemplates.forEach(template => {
                     template.variations.forEach(variation => {
-                        const questionVariations = [
-                            template.template.replace(/\{[^}]+\}/g, variation),
-                            template.template.replace(/\{[^}]+\}/g, variation).replace('What', 'Can you explain what'),
-                            template.template.replace(/\{[^}]+\}/g, variation).replace('How', 'Please describe how'),
-                            template.template.replace(/\{[^}]+\}/g, variation).replace('Do we', 'Does the company'),
-                        ];
+                        const question = template.template.replace(/\{[^}]+\}/g, variation);
+                        const answer = answers[template.category][0];
                         
-                        const question = questionVariations[round % questionVariations.length];
-                        const answerOptions = answers[template.category];
-                        const answer = answerOptions[Math.floor(Math.random() * answerOptions.length)];
-                        
+                        // Randomly assign issues
                         const issues = [];
+                        if (Math.random() < 0.15) issues.push('duplicate');
+                        if (Math.random() < 0.1) issues.push('outdated');
                         if (Math.random() < 0.08) issues.push('vague');
-                        if (Math.random() < 0.05) issues.push('inconsistent');
                         
-                        const confidence = issues.length > 0 ? Math.floor(Math.random() * 30) + 50 : Math.floor(Math.random() * 20) + 80;
+                        const confidence = issues.length > 0 ? 65 : 90;
                         
                         data.push({
                             id: id++,
@@ -500,18 +408,8 @@
             return data.slice(0, 900);
         };
 
-        // Get pairs based on current view
-        const getCurrentPairs = () => {
-            switch(currentView) {
-                case 'finalized': return finalizedPairs;
-                case 'deleted': return deletedPairs;
-                default: return qaPairs;
-            }
-        };
-
-        // Filter logic
         useEffect(() => {
-            let filtered = getCurrentPairs();
+            let filtered = qaPairs;
 
             if (searchTerm) {
                 filtered = filtered.filter(pair => 
@@ -524,24 +422,25 @@
             if (filter !== 'all') {
                 filtered = filtered.filter(pair => {
                     switch(filter) {
-                        case 'duplicates': 
-                            return duplicateGroups.some(group => 
-                                group.some(duplicate => duplicate.id === pair.id)
-                            );
+                        case 'issues': return pair.issues.length > 0;
+                        case 'duplicates': return pair.issues.includes('duplicate');
+                        case 'outdated': return pair.issues.includes('outdated');
+                        case 'low-confidence': return pair.confidence < 80;
                         default: return true;
                     }
                 });
             }
 
             setFilteredPairs(filtered);
-        }, [searchTerm, filter, qaPairs, finalizedPairs, deletedPairs, currentView, duplicateGroups]);
+        }, [searchTerm, filter, qaPairs]);
 
         const getIssueColor = (issue) => {
             switch(issue) {
-                case 'duplicate': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                case 'inconsistent': return 'bg-orange-100 text-orange-800 border-orange-200';
-                case 'vague': return 'bg-gray-100 text-gray-800 border-gray-200';
-                default: return 'bg-blue-100 text-blue-800 border-blue-200';
+                case 'duplicate': return 'bg-yellow-100 text-yellow-800';
+                case 'outdated': return 'bg-red-100 text-red-800';
+                case 'inconsistent': return 'bg-orange-100 text-orange-800';
+                case 'vague': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-blue-100 text-blue-800';
             }
         };
 
@@ -550,41 +449,306 @@
         };
 
         const handleSave = () => {
-            if (currentView === 'review') {
-                setQaPairs(prev => prev.map(p => p.id === editingPair.id ? editingPair : p));
-            } else if (currentView === 'finalized') {
-                setFinalizedPairs(prev => prev.map(p => p.id === editingPair.id ? editingPair : p));
-            }
+            setQaPairs(prev => prev.map(p => p.id === editingPair.id ? editingPair : p));
             setEditingPair(null);
         };
 
         const handleDelete = (id) => {
-            if (currentView === 'review') {
-                const pairToDelete = qaPairs.find(p => p.id === id);
-                setDeletedPairs(prev => [...prev, pairToDelete]);
-                setQaPairs(prev => prev.filter(p => p.id !== id));
-            } else if (currentView === 'finalized') {
-                const pairToDelete = finalizedPairs.find(p => p.id === id);
-                setDeletedPairs(prev => [...prev, pairToDelete]);
-                setFinalizedPairs(prev => prev.filter(p => p.id !== id));
-            } else if (currentView === 'deleted') {
-                setDeletedPairs(prev => prev.filter(p => p.id !== id));
-            }
-            
-            if (selectedPair && selectedPair.id === id) {
-                setSelectedPair(null);
-            }
-        };
-
-        const handleFinalize = (id) => {
-            const pairToFinalize = qaPairs.find(p => p.id === id);
-            setFinalizedPairs(prev => [...prev, pairToFinalize]);
             setQaPairs(prev => prev.filter(p => p.id !== id));
             if (selectedPair && selectedPair.id === id) {
                 setSelectedPair(null);
             }
         };
 
-        const handleRestore = (id) => {
-            if (currentView === 'deleted')
+        const exportCleanData = () => {
+            const cleanData = qaPairs.map(pair => ({
+                question: pair.question,
+                answer: pair.answer,
+                tags: pair.tags.join(', ')
+            }));
+            
+            const csv = [
+                ['Question', 'Answer', 'Tags'],
+                ...cleanData.map(row => [row.question, row.answer, row.tags])
+            ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cleaned_qa_pairs.csv';
+            a.click();
+        };
+
+        return React.createElement('div', { className: "min-h-screen bg-gray-50 p-6" },
+            React.createElement('div', { className: "max-w-7xl mx-auto" },
+                // Header
+                React.createElement('div', { className: "mb-8" },
+                    React.createElement('h1', { className: "text-3xl font-bold text-gray-900 mb-2" }, "Q&A Knowledge Base Cleanup"),
+                    React.createElement('p', { className: "text-gray-600" }, "Review, edit, and clean up your question-answer pairs for better accuracy")
+                ),
+
+                // Controls
+                React.createElement('div', { className: "bg-white rounded-lg shadow-sm border p-6 mb-6" },
+                    React.createElement('div', { className: "flex flex-wrap gap-4 items-center justify-between" },
+                        React.createElement('div', { className: "flex gap-4 items-center" },
+                            React.createElement('div', { className: "relative" },
+                                React.createElement(Search, { className: "absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" }),
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Search questions, answers, or tags...",
+                                    className: "pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-80",
+                                    value: searchTerm,
+                                    onChange: (e) => setSearchTerm(e.target.value)
+                                })
+                            ),
+                            React.createElement('select', {
+                                value: filter,
+                                onChange: (e) => setFilter(e.target.value),
+                                className: "px-4 py-2 border border-gray-300 rounded-lg"
+                            },
+                                React.createElement('option', { value: "all" }, "All Pairs"),
+                                React.createElement('option', { value: "issues" }, "Has Issues"),
+                                React.createElement('option', { value: "duplicates" }, "Duplicates"),
+                                React.createElement('option', { value: "outdated" }, "Outdated"),
+                                React.createElement('option', { value: "low-confidence" }, "Low Confidence")
+                            )
+                        ),
+                        React.createElement('div', { className: "flex gap-2" },
+                            React.createElement('div', { className: "relative" },
+                                React.createElement('input', {
+                                    type: "file",
+                                    accept: ".xlsx,.xls,.csv",
+                                    onChange: handleFileUpload,
+                                    className: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
+                                    disabled: isLoading
+                                }),
+                                React.createElement('button', {
+                                    className: `px-4 py-2 rounded-lg flex items-center gap-2 ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white`,
+                                    disabled: isLoading
+                                },
+                                    isLoading ? [
+                                        React.createElement('div', { key: 'spinner', className: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }),
+                                        "Processing..."
+                                    ] : [
+                                        React.createElement(Upload, { key: 'icon' }),
+                                        "Import Excel"
+                                    ]
+                                )
+                            ),
+                            React.createElement('button', {
+                                onClick: exportCleanData,
+                                className: "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2",
+                                disabled: qaPairs.length === 0
+                            },
+                                React.createElement(Download),
+                                `Export Clean Data (${qaPairs.length} pairs)`
+                            ),
+                            React.createElement('button', {
+                                onClick: loadSampleData,
+                                className: "px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                            },
+                                React.createElement(FileSpreadsheet),
+                                "Load Sample Data"
+                            )
+                        )
+                    )
+                ),
+
+                // Upload Status
+                uploadError && React.createElement('div', { className: "bg-red-50 border border-red-200 rounded-lg p-4 mb-6" },
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement(AlertCircle, { className: "w-5 h-5 text-red-600" }),
+                        React.createElement('h3', { className: "font-medium text-red-800" }, "Upload Error")
+                    ),
+                    React.createElement('p', { className: "text-red-700 mt-1" }, uploadError),
+                    React.createElement('button', {
+                        onClick: () => setUploadError(null),
+                        className: "mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                    }, "Dismiss")
+                ),
+
+                isProcessing && React.createElement('div', { className: "bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6" },
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement('div', { className: "animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" }),
+                        React.createElement('h3', { className: "font-medium text-blue-800" }, "Processing Q&A Pairs")
+                    ),
+                    React.createElement('p', { className: "text-blue-700 mt-1" }, "Analyzing content and detecting issues...")
+                ),
+
+                qaPairs.length === 0 && !isLoading && !isProcessing && React.createElement('div', { className: "bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center" },
+                    React.createElement(FileSpreadsheet, { className: "w-12 h-12 text-gray-400 mx-auto mb-4" }),
+                    React.createElement('h3', { className: "text-lg font-medium text-gray-900 mb-2" }, "No Q&A Data Loaded"),
+                    React.createElement('p', { className: "text-gray-600 mb-4" }, "Upload an Excel file with your Q&A pairs to get started"),
+                    React.createElement('p', { className: "text-sm text-gray-500 mb-4" }, "Expected format: Excel file with \"Question\" and \"Answer\" columns"),
+                    React.createElement('button', {
+                        onClick: loadSampleData,
+                        className: "px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    }, "Or Try Sample Data (900 pairs)")
+                ),
+
+                // Stats
+                qaPairs.length > 0 && React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" },
+                    React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "text-2xl font-bold text-gray-900" }, qaPairs.length),
+                        React.createElement('div', { className: "text-sm text-gray-600" }, "Total Q&A Pairs")
+                    ),
+                    React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "text-2xl font-bold text-red-600" }, qaPairs.filter(p => p.issues.length > 0).length),
+                        React.createElement('div', { className: "text-sm text-gray-600" }, "Need Attention")
+                    ),
+                    React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "text-2xl font-bold text-yellow-600" }, qaPairs.filter(p => p.issues.includes('duplicate')).length),
+                        React.createElement('div', { className: "text-sm text-gray-600" }, "Potential Duplicates")
+                    ),
+                    React.createElement('div', { className: "bg-white p-4 rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "text-2xl font-bold text-green-600" }, qaPairs.filter(p => p.issues.length === 0).length),
+                        React.createElement('div', { className: "text-sm text-gray-600" }, "Clean Pairs")
+                    )
+                ),
+
+                // Main Content
+                qaPairs.length > 0 && React.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                    // Q&A List
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "p-4 border-b" },
+                            React.createElement('h2', { className: "text-lg font-semibold" }, `Q&A Pairs (${filteredPairs.length})`)
+                        ),
+                        React.createElement('div', { className: "max-h-96 overflow-y-auto" },
+                            filteredPairs.map((pair) =>
+                                React.createElement('div', {
+                                    key: pair.id,
+                                    className: `p-4 border-b cursor-pointer hover:bg-gray-50 ${selectedPair?.id === pair.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`,
+                                    onClick: () => setSelectedPair(pair)
+                                },
+                                    React.createElement('div', { className: "flex items-start justify-between mb-2" },
+                                        React.createElement('h3', { className: "font-medium text-gray-900 text-sm" }, pair.question),
+                                        React.createElement('div', { className: "flex gap-1" },
+                                            pair.issues.map((issue, idx) =>
+                                                React.createElement('span', {
+                                                    key: idx,
+                                                    className: `px-2 py-1 text-xs rounded-full ${getIssueColor(issue)}`
+                                                }, issue)
+                                            )
+                                        )
+                                    ),
+                                    React.createElement('p', { className: "text-gray-600 text-sm line-clamp-2" }, pair.answer),
+                                    React.createElement('div', { className: "flex items-center justify-between mt-2" },
+                                        React.createElement('div', { className: "flex gap-1" },
+                                            pair.tags.map((tag, idx) =>
+                                                React.createElement('span', {
+                                                    key: idx,
+                                                    className: "px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                                                }, tag)
+                                            )
+                                        ),
+                                        React.createElement('div', { className: "text-xs text-gray-500" }, `Confidence: ${pair.confidence}%`)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Detail View
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border" },
+                        React.createElement('div', { className: "p-4 border-b" },
+                            React.createElement('h2', { className: "text-lg font-semibold" },
+                                selectedPair ? 'Review & Edit' : 'Select a Q&A pair to review'
+                            )
+                        ),
+                        
+                        selectedPair && React.createElement('div', { className: "p-4" },
+                            editingPair?.id === selectedPair.id ? 
+                                // Edit Mode
+                                React.createElement('div', { className: "space-y-4" },
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Question"),
+                                        React.createElement('textarea', {
+                                            value: editingPair.question,
+                                            onChange: (e) => setEditingPair({...editingPair, question: e.target.value}),
+                                            className: "w-full p-3 border border-gray-300 rounded-lg",
+                                            rows: "2"
+                                        })
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Answer"),
+                                        React.createElement('textarea', {
+                                            value: editingPair.answer,
+                                            onChange: (e) => setEditingPair({...editingPair, answer: e.target.value}),
+                                            className: "w-full p-3 border border-gray-300 rounded-lg",
+                                            rows: "4"
+                                        })
+                                    ),
+                                    React.createElement('div', { className: "flex gap-2" },
+                                        React.createElement('button', {
+                                            onClick: handleSave,
+                                            className: "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                        },
+                                            React.createElement(CheckCircle),
+                                            "Save"
+                                        ),
+                                        React.createElement('button', {
+                                            onClick: () => setEditingPair(null),
+                                            className: "px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                                        },
+                                            React.createElement(X),
+                                            "Cancel"
+                                        )
+                                    )
+                                ) :
+                                // View Mode
+                                React.createElement('div', { className: "space-y-4" },
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Question"),
+                                        React.createElement('div', { className: "p-3 bg-gray-50 rounded-lg" }, selectedPair.question)
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Answer"),
+                                        React.createElement('div', { className: "p-3 bg-gray-50 rounded-lg" }, selectedPair.answer)
+                                    ),
+                                    selectedPair.issues.length > 0 && React.createElement('div', null,
+                                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Issues Found"),
+                                        React.createElement('div', { className: "flex gap-2" },
+                                            selectedPair.issues.map((issue, idx) =>
+                                                React.createElement('span', {
+                                                    key: idx,
+                                                    className: `px-3 py-1 text-sm rounded-full ${getIssueColor(issue)}`
+                                                }, issue)
+                                            )
+                                        )
+                                    ),
+                                    selectedPair.issues.includes('duplicate') && React.createElement('div', { className: "bg-yellow-50 border border-yellow-200 rounded-lg p-4" },
+                                        React.createElement('h4', { className: "font-medium text-yellow-800 mb-2" }, "Potential Duplicates Found"),
+                                        React.createElement('p', { className: "text-sm text-yellow-700 mb-3" }, "Similar questions detected. Consider merging or keeping the best version."),
+                                        React.createElement('button', { className: "px-3 py-1 bg-yellow-200 text-yellow-800 rounded text-sm hover:bg-yellow-300" }, "View Similar Questions")
+                                    ),
+                                    React.createElement('div', { className: "flex gap-2" },
+                                        React.createElement('button', {
+                                            onClick: () => handleEdit(selectedPair),
+                                            className: "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                        },
+                                            React.createElement(Edit3),
+                                            "Edit"
+                                        ),
+                                        React.createElement('button', {
+                                            onClick: () => handleDelete(selectedPair.id),
+                                            className: "px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                                        },
+                                            React.createElement(Trash2),
+                                            "Delete"
+                                        )
+                                    )
+                                )
+                        )
+                    )
+                )
+            )
+        );
+    };
+
+    ReactDOM.render(React.createElement(QACleanupTool), document.getElementById('root'));
+</script>
 ```
+
+</body>
+</html>
